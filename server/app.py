@@ -17,34 +17,41 @@ from dotenv import load_dotenv
 
 # Local imports
 from config import app, db, api
+
 # Add your model imports
+from models.homeFavorite import HomeFavorite
 from models.user import User
-from models.favorite import Favorite
+
 
 # Cloudinary
 load_dotenv()
 config = cloudinary.config(secure=True)
+
 
 # Error Handling
 @app.errorhandler(NotFound)
 def not_found(error):
     return {"error": error.description}, 404
 
+
 # Route Protection
 def login_required(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        if "user_id" not in session:
             return {"Error": "Access Denied. Please log in."}, 422
         return func(*args, **kwargs)
+
     return decorated_function
+
 
 # API Routes
 
+
 # Frontend Routes
-@app.route('/')
-@app.route('/browse')
-@app.route('/user/edit')
+@app.route("/")
+@app.route("/browse")
+@app.route("/user/edit")
 def index(id=0):
     return render_template("index.html")
 
@@ -52,33 +59,33 @@ def index(id=0):
 class UserById(Resource):
     @login_required
     def get(self, id):
-        try: 
+        try:
             if user := db.session.get(User, id):
                 return user.to_dict(), 200
             else:
                 return {"Error": "User not found."}, 404
         except Exception as e:
             return {"Error": str(e)}, 400
-    
+
     @login_required
     def patch(self, id):
         if user := db.session.get(User, id):
             try:
-                file = request.files['profile_image']
+                file = request.files["profile_image"]
                 if file:
                     response = cloudinary.uploader.upload(
                         file,
                         upload_preset="HomeApp",
-                        unique_filename=True, 
+                        unique_filename=True,
                         overwrite=True,
-                        eager=[{"width": 500, "crop": "fill"}]
+                        eager=[{"width": 500, "crop": "fill"}],
                     )
-                    image_url = response['eager'][0]['secure_url']
+                    image_url = response["eager"][0]["secure_url"]
                     user.profile_image = image_url
 
                 data = request.form
                 for attr, value in data.items():
-                    if attr == '_password_hash':
+                    if attr == "_password_hash":
                         user.password_hash = value
                     else:
                         setattr(user, attr, value)
@@ -90,9 +97,9 @@ class UserById(Resource):
         else:
             return {"Error": "User not found"}, 404
 
-    @login_required    
+    @login_required
     def delete(self, id):
-        try: 
+        try:
             if user := db.session.get(User, id):
                 db.session.delete(user)
                 db.session.commit()
@@ -102,7 +109,10 @@ class UserById(Resource):
         except Exception as e:
             db.session.rollback()
             return {"Error": str(e)}, 400
+
+
 api.add_resource(UserById, "/users/<int:id>")
+
 
 class Favorites(Resource):
     @login_required
@@ -110,19 +120,22 @@ class Favorites(Resource):
         try:
             if user := db.session.get(User, user_id):
                 favorites = [favorite.to_dict() for favorite in user.favorites]
-                return favorites, 200   
+                return favorites, 200
             else:
                 return {"Error": "User not found."}, 404
         except Exception as e:
             return {"Error": str(e)}, 400
+
+
 api.add_resource(Favorites, "/users/<int:user_id>/favorites")
+
 
 class AddFavorite(Resource):
     @login_required
     def post(self, user_id):
         try:
             user = User.query.get(user_id)
-            
+
             if not user:
                 return {"Error": "User not found."}, 404
 
@@ -130,13 +143,16 @@ class AddFavorite(Resource):
             new_favorite = Favorite(user_id=user.id, **data)
             db.session.add(new_favorite)
             db.session.commit()
-            
+
             return new_favorite.to_dict(), 201
 
         except Exception as e:
             db.session.rollback()
             return {"Error": str(e)}, 400
-api.add_resource(AddFavorite, '/<int:user_id>/add_favorite')
+
+
+api.add_resource(AddFavorite, "/<int:user_id>/add_favorite")
+
 
 class RemoveFavorite(Resource):
     @login_required
@@ -157,53 +173,59 @@ class RemoveFavorite(Resource):
         except Exception as e:
             db.session.rollback()
             return {"Error": str(e)}, 400
-api.add_resource(RemoveFavorite, '/<int:user_id>/remove_favorite/<int:favorite_id>')
+
+
+api.add_resource(RemoveFavorite, "/<int:user_id>/remove_favorite/<int:favorite_id>")
 
 # User Management
+
 
 # Signup
 class SignUp(Resource):
     def post(self):
-        file = request.files['profile_image']
+        file = request.files["profile_image"]
         if file:
             try:
                 response = cloudinary.uploader.upload(
                     file,
                     upload_preset="HomeApp",
-                    unique_filename=True, 
+                    unique_filename=True,
                     overwrite=True,
-                    eager=[{"width": 500, "crop": "fill"}]
+                    eager=[{"width": 500, "crop": "fill"}],
                 )
-                image_url = response['eager'][0]['secure_url']
+                image_url = response["eager"][0]["secure_url"]
             except Exception as e:
-                return {"Error": str(e)}, 400 
+                return {"Error": str(e)}, 400
 
         data = request.form
-        
+
         try:
             new_user = User(
-                username=data['username'],
-                email=data['email'],
-                profile_image=image_url if file and image_url else None
+                username=data["username"],
+                email=data["email"],
+                profile_image=image_url if file and image_url else None,
             )
-            new_user.password_hash = data['_password_hash']
-            
+            new_user.password_hash = data["_password_hash"]
+
             db.session.add(new_user)
             db.session.commit()
 
-            session['user_id'] = new_user.id
+            session["user_id"] = new_user.id
             return new_user.to_dict(), 201
         except Exception as e:
             db.session.rollback()
             return {"Error": str(e)}, 400
-api.add_resource(SignUp, '/signup')
+
+
+api.add_resource(SignUp, "/signup")
+
 
 class Login(Resource):
     def post(self):
-        try:  
+        try:
             data = request.form
             user = User.query.filter_by(email=data.get("email")).first()
-            if user and user.authenticate(data.get('_password_hash')):
+            if user and user.authenticate(data.get("_password_hash")):
                 session["user_id"] = user.id
                 return user.to_dict(), 200
             else:
@@ -211,20 +233,26 @@ class Login(Resource):
         except Exception as e:
             db.session.rollback()
             return {"Error": str(e)}, 400
-api.add_resource(Login, '/login')
+
+
+api.add_resource(Login, "/login")
+
 
 class Logout(Resource):
     def delete(self):
         try:
             if "user_id" in session:
-                del session['user_id']
+                del session["user_id"]
                 return {}, 204
             else:
                 return {"Error": "A User is not logged in."}, 404
         except Exception as e:
             db.session.rollback()
             return {"Error": str(e)}, 400
-api.add_resource(Logout, '/logout')
+
+
+api.add_resource(Logout, "/logout")
+
 
 class CheckMe(Resource):
     def get(self):
@@ -232,8 +260,10 @@ class CheckMe(Resource):
             user = db.session.get(User, session.get("user_id"))
             return user.to_dict(), 200
         else:
-            return {"Error": "Please log in."}, 400       
-api.add_resource(CheckMe, '/me')
+            return {"Error": "Please log in."}, 400
 
-if __name__ == '__main__':
+
+api.add_resource(CheckMe, "/me")
+
+if __name__ == "__main__":
     app.run(port=5555, debug=True)

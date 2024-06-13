@@ -1,6 +1,4 @@
 from . import SerializerMixin, validates, re, db
-from models.home import Home
-from models.user import User
 
 class Review(db.Model, SerializerMixin):
     __tablename__ = 'reviews'
@@ -54,7 +52,8 @@ class Review(db.Model, SerializerMixin):
             raise TypeError("Home ids must be integers.")
         elif home_id < 1:
             raise ValueError(f"{home_id} has to be a positive integer.")
-        elif not db.session.get(Home, home_id):
+        from models.home import Home
+        if not db.session.get(Home, home_id):
             raise ValueError(
                 f"{home_id} has to correspond to an existing home."
             )
@@ -66,7 +65,8 @@ class Review(db.Model, SerializerMixin):
             raise TypeError("User ids must be integers.")
         elif user_id < 1:
             raise ValueError(f"{user_id} has to be a positive integer.")
-        elif not db.session.get(User, user_id):
+        from models.user import User
+        if not db.session.get(User, user_id):
             raise ValueError(
                 f"{user_id} has to correspond to an existing user."
             )

@@ -1,6 +1,4 @@
 from . import SerializerMixin, validates, re, db
-from models.home import Home
-from models.favoritesCollection import FavoriteCollection
 
 class HomeFavorite(db.Model, SerializerMixin):
     __tablename__ = 'home_favorites'
@@ -31,7 +29,8 @@ class HomeFavorite(db.Model, SerializerMixin):
             raise TypeError("FavoriteCollection ids must be integers.")
         elif favorite_collection_id < 1:
             raise ValueError("FavoriteCollection id has to be a positive integer.")
-        elif not db.session.get(FavoriteCollection, favorite_collection_id):
+        from models.favoritesCollection import FavoriteCollection
+        if not db.session.get(FavoriteCollection, favorite_collection_id):
             raise ValueError("FavoriteCollection id has to correspond to an existing favorite collection.")
         return favorite_collection_id
     
@@ -41,6 +40,7 @@ class HomeFavorite(db.Model, SerializerMixin):
             raise TypeError("Home ids must be integers.")
         elif home_id < 1:
             raise ValueError("Home id has to be a positive integer.")
-        elif not db.session.get(Home, home_id):
+        from models.home import Home
+        if not db.session.get(Home, home_id):
             raise ValueError("Home id has to correspond to an existing home.")
         return home_id

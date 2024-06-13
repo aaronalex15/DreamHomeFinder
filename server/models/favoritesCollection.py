@@ -1,6 +1,4 @@
 from . import SerializerMixin, validates, re, db
-from models.home import Home
-from models.user import User
 from sqlalchemy.ext.associationproxy import association_proxy
 
 class FavoriteCollection(db.Model, SerializerMixin):
@@ -46,6 +44,7 @@ class FavoriteCollection(db.Model, SerializerMixin):
             raise TypeError("User ids must be integers.")
         elif user_id < 1:
             raise ValueError("User id has to be a positive integer.")
-        elif not db.session.get(User, user_id):
+        from models.user import User
+        if not db.session.get(User, user_id):
             raise ValueError("User id has to correspond to an existing user.")
         return user_id
