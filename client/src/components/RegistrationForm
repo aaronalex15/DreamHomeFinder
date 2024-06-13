@@ -1,0 +1,193 @@
+import { useContext, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import * as Yup from "yup";
+import YupPassword from "yup-password";
+import { Formik, Form, Field } from "formik";
+import { UserContext } from "./UserContext";
+
+YupPassword(Yup);
+
+// Login Schema
+const loginSchema = Yup.object().shape({
+  email: Yup.string()
+    .email("Invalid email format.")
+    .required("Email is required."),
+  _password_hash: Yup.string()
+    .min(8, "Password must be at least 8 characters long.")
+    .matches(/[a-zA-Z0-9]/, "Password should contain letters and numbers.")
+    .minLowercase(1, "Password must contain at least 1 lowercase letter.")
+    .minUppercase(1, "Password must contain at least 1 uppercase letter.")
+    .minNumbers(1, "Password must contain at least 1 number.")
+    .minSymbols(1, "Password must contain at least 1 special character.")
+    .required("Password is required."),
+});
+
+// Signup Schema
+const signupSchema = Yup.object().shape({
+  username: Yup.string()
+    .min(3, "Username must be at least 3 characters long.")
+    .max(20, "Username must be 20 characters or less.")
+    .required("Username is required."),
+  email: Yup.string()
+    .email("Invalid email format.")
+    .min(5, "Email must be at least 5 characters long.")
+    .max(40, "Email must be 40 characters or less.")
+    .required("Email is required."),
+  _password_hash: Yup.string()
+    .min(8, "Password must be at least 8 characters long.")
+    .matches(/[a-zA-Z0-9]/, "Password should contain letters and numbers.")
+    .minLowercase(1, "Password must contain at least 1 lowercase letter.")
+    .minUppercase(1, "Password must contain at least 1 uppercase letter.")
+    .minNumbers(1, "Password must contain at least 1 number.")
+    .minSymbols(1, "Password must contain at least 1 special character.")
+    .required("Password is required."),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref("_password_hash"), null], "Passwords must match.")
+    .required("Confirm Password is required."),
+});
+
+const RegistrationForm = () => {
+  const { login } = useContext(UserContext);
+  const navigate = useNavigate();
+  const [isLogin, setIsLogin] = useState(true);
+  const file = useRef(null);
+
+  const handleIsLogin = () => {
+    setIsLogin(!isLogin);
+  };
+
+  const handleSubmit = async (values) => {
+    try {
+      const formData = new FormData();
+      formData.append("email", values.email);
+      formData.append("_password_hash", values._password_hash);
+
+      if (!isLogin) {
+        formData.append("username", values.username);
+        if (values.profile_image) {
+          formData.append("profile_image", values.profile_image);
+        }
+      }
+
+      const response = await fetch(isLogin ? "/login" : "/signup", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        login(data);
+        navigate("/browse"); // Redirect after successful login/signup
+        toast.success("Successfully logged in!");
+      } else {
+        const errorObj = await response.json();
+        toast.error(errorObj.Error);
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("An unexpected error occurred.");
+    }
+  };
+
+  return (
+    <div className="content-container">
+      <h2>Your Home Finder App Welcome Message</h2>
+      <h3>{isLogin ? "Login" : "Sign Up"}</h3>
+      <Formik
+        initialValues={{
+          username: "",
+          profile_image: null,
+          email: "",
+          _password_hash: "",
+          confirmPassword: "",
+        }}
+        validationSchema={isLogin ? loginSchema : signupSchema}
+        onSubmit={handleSubmit}
+      >
+        {({ values, errors, touched, setFieldValue }) => (
+          <Form className="form">
+            {!isLogin && (
+              <>
+                <Field
+                  type="text"
+                  name="username"
+                  placeholder="Username"
+                  className="input"
+                  autoComplete="username"
+                />
+                {errors.username && touched.username && (
+                  <div className="error-message show">{errors.username}</div>
+                )}
+                <label htmlFor="profile_image">
+                  Profile Picture (Optional):
+                </label>
+                <input
+                  type="file"
+                  name="profile_image"
+                  onChange={(event) =>
+                    setFieldValue("profile_image", event.currentTarget.files[0])
+                  }
+                  ref={file}
+                  className="input"
+                />
+              </>
+            )}
+            <Field
+              type="text"
+              name="email"
+              placeholder="Email"
+              className="input"
+              autoComplete="email"
+            />
+            {errors.email && touched.email && (
+              <div className="error-message show">{errors.email}</div>
+            )}
+            <Field
+              type="password"
+              name="_password_hash"
+              placeholder="Password"
+              className="input"
+              autoComplete="current-password"
+            />
+            {errors._password_hash && touched._password_hash && (
+              <div className="error-message show">{errors._password_hash}</div>
+            )}
+            {!isLogin && (
+              <>
+                <Field
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  className="input"
+                />
+                {errors.confirmPassword && touched.confirmPassword && (
+                  <div className="error-message show">
+                    {errors.confirmPassword}
+                  </div>
+                )}
+              </>
+            )}
+            <input
+              type="submit"
+              className="submit"
+              value={isLogin ? "Login" : "Sign up"}
+            />
+            <br />
+            {isLogin ? (
+              <span onClick={handleIsLogin}>
+                Not a member yet? <u className="reg-link">Sign up</u>
+              </span>
+            ) : (
+              <span onClick={handleIsLogin}>
+                Already a member? <u className="reg-link">Login</u>
+              </span>
+            )}
+          </Form>
+        )}
+      </Formik>
+    </div>
+  );
+};
+
+export default RegistrationForm;
